@@ -114,6 +114,7 @@ class Parallel(object):
         if print_info:
             print(f'[*] Success: {self.task_size - len(self.failed_tasks)}, Failure: {len(self.failed_tasks)}')
             print(f'[*] Elapsed time: {end - start} s')
-        with open(self.failed_tasks_path, 'w') as fp:
-            json.dump(self.failed_tasks, fp)
+        if len(self.failed_tasks) != 0:
+            with open(self.failed_tasks_path, 'w') as fp:
+                json.dump(self.failed_tasks, fp)
         return self.results
