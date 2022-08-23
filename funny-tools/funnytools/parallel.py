@@ -4,6 +4,8 @@ import os.path
 import threading
 import time
 
+from progress.bar import ShadyBar
+
 __version__ = '1.0.0'
 """
 v1.0.0: 1. 记录失败任务并且添加失败重试机制
@@ -28,7 +30,7 @@ class Parallel(object):
     """
 
     def __init__(self, tasks, process, collect=None, workers_num=1, with_thread_lock=True, process_params=None,
-                 print_process=None, go_on=False, max_fail_times=3):
+                 print_process=True, go_on=False, max_fail_times=3):
         self.init_tasks = tasks
         self.task_size = len(tasks)
         self.process = process
@@ -46,6 +48,7 @@ class Parallel(object):
                 failed_tasks = json.load(fp)
                 self.init_tasks = [v['object'] for k, v in failed_tasks.items()]
         self.max_fail_times = max(1, max_fail_times)
+        self.bar = ShadyBar('Processing', max=self.task_size, suffix='%(percent).1f%% [%(elapsed_td)s / %(eta_td)s]')
 
     def do_work(self):
         while len(self.init_tasks) > 0:
@@ -98,9 +101,9 @@ class Parallel(object):
                     else:
                         self.init_tasks.add(task)
                     continue
-            if self.print_process is not None and ((self.task_size - len(self.init_tasks)) % self.print_process == 0
-                                                   or len(self.init_tasks) == 0):
-                print('process {}/{}...'.format(self.task_size - len(self.init_tasks), self.task_size), flush=True)
+            if self.print_process:
+                self.bar.next()
+        self.bar.finish()
 
     def __call__(self, print_info=True, **kwargs):
         threads = [threading.Thread(target=self.do_work, name=f"{self.__class__.__name__}-Thread-{i}")
