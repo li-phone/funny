@@ -108,15 +108,12 @@ class Parallel(object):
     def __call__(self, print_info=True, **kwargs):
         threads = [threading.Thread(target=self.do_work, name=f"{self.__class__.__name__}-Thread-{i}")
                    for i in range(self.workers_num)]
-        start = time.time()
         for t in threads:
             t.start()
         for t in threads:
             t.join()
-        end = time.time()
         if print_info:
             print(f'[*] Success: {self.task_size - len(self.failed_tasks)}, Failure: {len(self.failed_tasks)}')
-            print(f'[*] Elapsed time: {end - start} s')
         if len(self.failed_tasks) != 0:
             with open(self.failed_tasks_path, 'w') as fp:
                 json.dump(self.failed_tasks, fp)
