@@ -2,7 +2,6 @@ import hashlib
 import json
 import os.path
 import threading
-import time
 
 from progress.bar import ShadyBar
 
@@ -103,7 +102,6 @@ class Parallel(object):
                     continue
             if self.print_process:
                 self.bar.next()
-        self.bar.finish()
 
     def __call__(self, print_info=True, **kwargs):
         threads = [threading.Thread(target=self.do_work, name=f"{self.__class__.__name__}-Thread-{i}")
@@ -112,6 +110,7 @@ class Parallel(object):
             t.start()
         for t in threads:
             t.join()
+        self.bar.finish()
         if print_info:
             print(f'[*] Success: {self.task_size - len(self.failed_tasks)}, Failure: {len(self.failed_tasks)}')
         if len(self.failed_tasks) != 0:

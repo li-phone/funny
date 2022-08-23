@@ -21,6 +21,6 @@ class AbstractParallel(metaclass=abc.ABCMeta):
         self.parallel_params = kwargs
 
     def __call__(self, *args, **kwargs):
-        settings = dict(tasks=self.create_task(), process=self.process_task, **kwargs)
+        settings = dict(tasks=self.create_task(), process=self.process_task, **self.parallel_params)
         self.parallel = Parallel(**settings)
         return self.parallel()
