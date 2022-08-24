@@ -1,0 +1,2 @@
+# funny
+FUNNY THINGS FOR YOU
