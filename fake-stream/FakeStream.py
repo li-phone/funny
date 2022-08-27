@@ -66,6 +66,7 @@ class FakeStreamWorker(AbstractParallel, ABC):
                 sleep_time -= 0.1
                 sleep_time = min(sleep_time, self.speed)
                 continue
+            add_cnt = 0
             try:
                 if self.connection is not None and len(self.table_map) == 0:
                     for table in self.table_names:
@@ -76,9 +77,10 @@ class FakeStreamWorker(AbstractParallel, ABC):
                 for k, v in self.table_map.items():
                     fs = set_dtypes(v, self.time_offset, self.fix_val)
                     res = add([fs], k, self.connection, freq=1)
+                    add_cnt += 1
                     write_txt(f'logs/{fileftime()}.log', f'[INFO] {strftime()} Execute "{res[0]}"\n')
             except Exception as e:
                 self.show_log(f'[INFO] {strftime()} Execute failure!')
-            self.show_log(f'[INFO] {strftime()} Insert {len(self.table_map)} records / {self.speed} seconds.')
+            self.show_log(f'[INFO] {strftime()} Insert {add_cnt} records / {self.speed} seconds.')
             if sleep_time <= 0:
                 sleep_time = self.speed
