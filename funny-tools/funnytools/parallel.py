@@ -8,6 +8,8 @@ from progress.bar import ShadyBar
 __version__ = '1.0.0'
 """
 v1.0.0: 1. 记录失败任务并且添加失败重试机制
+        2. 添加是否阻塞线程开关
+        3. 允许动态更新内部参数
 """
 
 
@@ -29,12 +31,12 @@ class Parallel(object):
     """
 
     def __init__(self, tasks, process, collect=None, workers_num=1, with_thread_lock=True, process_params=None,
-                 print_process=True, go_on=False, max_fail_times=3):
+                 print_process=True, go_on=False, max_fail_times=3, is_join=True):
         self.init_tasks = tasks
         self.task_size = len(tasks)
         self.process = process
         self.collect = [] if collect is None else collect
-        self.workers_num = workers_num
+        self.workers_num = max(1, int(workers_num))
         self.with_thread_lock = with_thread_lock
         self.process_params = {} if process_params is None else process_params
         self.print_process = print_process
@@ -46,7 +48,8 @@ class Parallel(object):
             with open(self.failed_tasks_path) as fp:
                 failed_tasks = json.load(fp)
                 self.init_tasks = [v['object'] for k, v in failed_tasks.items()]
-        self.max_fail_times = max(1, max_fail_times)
+        self.max_fail_times = max(1, int(max_fail_times))
+        self.is_join = is_join
         self.bar = ShadyBar('Processing', max=self.task_size, suffix='%(percent).1f%% [%(elapsed_td)s / %(eta_td)s]')
 
     def do_work(self):
@@ -103,15 +106,18 @@ class Parallel(object):
             if self.print_process:
                 self.bar.next()
 
-    def __call__(self, print_info=True, **kwargs):
+    def __call__(self, print_process=False, **kwargs):
+        for k, v in kwargs.items():
+            self.__setattr__(k, v)
         threads = [threading.Thread(target=self.do_work, name=f"{self.__class__.__name__}-Thread-{i}")
                    for i in range(self.workers_num)]
         for t in threads:
             t.start()
-        for t in threads:
-            t.join()
+        if self.is_join:
+            for t in threads:
+                t.join()
         self.bar.finish()
-        if print_info:
+        if self.print_process or print_process:
             print(f'[*] Success: {self.task_size - len(self.failed_tasks)}, Failure: {len(self.failed_tasks)}')
         if len(self.failed_tasks) != 0:
             with open(self.failed_tasks_path, 'w') as fp:

@@ -1,0 +1,15 @@
+# file
+.*.json
+*.spec
+test/.*
+
+# dir
+.*/
+dist/
+*.egg-info/
+__pycache__/
+*/__pycache__/
+build/
+release/
+logs/
+
