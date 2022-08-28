@@ -89,7 +89,7 @@ def exec_sql(sql, connect, reshape=False):
 
 
 def parse_connect(string, password=None):
-    user, host, port, database = re.findall(r'(\w+)@([\d|\.]+):(\d+)/(\w+)', string)[0]
+    user, host, port, database = re.findall(r'(\w+)@([\d|\.|\w]+):(\d+)/(\w+)', string)[0]
     if password is None:
         password = getpass.getpass(f'Connecting to {string} ..., please input password>?')
     return dict(
