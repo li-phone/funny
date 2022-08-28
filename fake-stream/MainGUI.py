@@ -1,11 +1,17 @@
 """
 v 2.0.0: 1. 更新为图形化界面
          2. 添加多线程功能点
+         3. 添加验证器
+         4. 添加用户数据保存和恢复
 """
+import hashlib
+import os.path
+
 import wx
 
-from FakeStream import connect, FakeStreamWorker
+from FakeStream import connect, FakeStreamWorker, read_bin, write_bin
 from NumberValidator import NumberValidator, DataType
+from db_utils import strftime
 
 
 class HomePage(wx.Frame):
@@ -17,9 +23,45 @@ class HomePage(wx.Frame):
         self.Centre()
         self.Show()
 
-        self.parallel = FakeStreamWorker(is_join=False, print_process=False, logTC=self.logTC)
         self.connection = None
-        self.last_status = {}
+        self.parallel = FakeStreamWorker(is_join=False, print_process=False, logTC=self.logTC)
+        self.ctrlNames = (
+            'dbAddrTC', 'dbPortTC', 'dbNameTC', 'loginUsrTC', 'loginPwdTC',
+            'fixValTC', 'offsetTC', 'speedsTC', 'workerTC', 'tbNameTC',
+        )
+        self.parameter_path = os.path.join(os.path.expanduser('~'), '.fakestream/.cltr.par')
+        self.parameters = read_bin(self.parameter_path)
+        self.parameters = {} if self.parameters is None else self.parameters
+        self.ReadParameters()
+
+    def ReadParameters(self):
+        try:
+            if len(self.parameters) == 0 or not isinstance(self.parameters, dict):
+                return
+            sorted_params = sorted(self.parameters.items(), key=lambda d: d[1]['time'], reverse=True)
+            key = sorted_params[0][0]
+            parameter = self.parameters.get(key)['data']
+            for k, v in parameter.items():
+                TC = self.__getattribute__(k)
+                if TC is not None:
+                    TC.SetValue(v)
+        except Exception as e:
+            return None
+
+    def SaveParameters(self):
+        try:
+            parameter = {}
+            for name in self.ctrlNames:
+                TC = self.__getattribute__(name)
+                if TC.Validate() is False:
+                    return False
+                parameter[name] = TC.GetValue()
+            md5_key = hashlib.md5(str(parameter).encode('utf-8')).hexdigest()
+            self.parameters[md5_key] = dict(time=strftime(), data=parameter)
+            write_bin(self.parameter_path, self.parameters)
+            return True
+        except Exception as e:
+            return True
 
     def InitUI(self):
         panel = wx.Panel(self)
@@ -126,6 +168,12 @@ class HomePage(wx.Frame):
         panel.SetSizer(vbox)
 
         panel.Fit()
+
+        self.Bind(wx.EVT_CLOSE, self.OnEvtClose)
+
+    def OnEvtClose(self, event):
+        if self.SaveParameters() is True:
+            event.Skip()
 
     def OnClickConnect(self, event):
         addr = self.dbAddrTC.GetValue()

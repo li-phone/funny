@@ -1,3 +1,4 @@
+import json
 import os
 import os.path as osp
 from abc import ABC
@@ -9,14 +10,32 @@ from db_utils import *
 
 
 def mkdirs(path):
-    if not osp.exists(osp.dirname(path)):
-        os.makedirs(osp.dirname(path))
+    dirname = osp.dirname(path)
+    if len(dirname) != 0 and not osp.exists(dirname):
+        os.makedirs(dirname)
 
 
 def write_txt(path, content):
     mkdirs(path)
     with open(path, 'a+', encoding='utf-8') as fp:
         fp.write(content)
+
+
+def read_bin(path):
+    try:
+        with open(path, 'r', encoding='utf-8') as fp:
+            return json.load(fp)
+    except Exception as e:
+        return None
+
+
+def write_bin(path, content):
+    try:
+        mkdirs(path)
+        with open(path, 'w', encoding='utf-8') as fp:
+            json.dump(content, fp)
+    except Exception as e:
+        return None
 
 
 def connect(connect_str, password=None):
