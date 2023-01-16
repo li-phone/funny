@@ -1,4 +1,4 @@
-Deploy
+DEPLOY
 ===========
 > An automatic deployment tool for deploying your applications on the remote hosts.
 
