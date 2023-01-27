@@ -5,24 +5,28 @@ DEPLOY
 Install
 -------
 Just run `build.sh` script that OK.
+
 ```
 > sh build.sh
 ```
 
-Make a link to the deployment program and add to the environment path. 
+Make a link to the deployment program and add to the environment path.
 
 On Windows:
+
 ```
 mklink deploy deploy-x.x.x-win_x64.exe
 ```
 
-On the other platform:
+On Linux:
+
 ```
 link -s deploy-x.x.x-Linux deploy
 ```
 
 Usage
 -----
+
 * Use ```deploy -h``` to call for the help.
 
 ```
@@ -40,11 +44,13 @@ optional arguments:
 ```
 
 * Generate the demo config file.
+
 ```
 > deploy -d or deply --demo
 ```
 
 * Modify the configurations as required.
+
 ```
 {
   "ENV": {
@@ -76,6 +82,7 @@ optional arguments:
 ```
 
 * Use the follow commands to deploying your applications
+
 ```
 # The default configurations:
 # -e default 'DEFAULT_ENV'
@@ -85,6 +92,7 @@ optional arguments:
 ```
 
 * Automatically generate deployment script for additional supplement.
+
 ```
 > sh deploy-auto.sh
 ```
@@ -93,6 +101,7 @@ Release logs
 ------------
 
 #### V1.0.0 at 2022/08/28
+
 * With the additional deployment script.
 * With the help for running and configuration.
 * Support prefix abbreviations for the module parameter.

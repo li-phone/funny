@@ -5,13 +5,16 @@ Funny-Tools
 Install
 -------
 Just run `install.sh` script that OK.
+
 ```
 > sh install.sh
 ```
 
 Usage
 -----
+
 * By inheritance
+
 ```
 from abc import ABC
 from funnytools.abstract_parallel import AbstractParallel
@@ -29,6 +32,7 @@ parallel()
 ```
 
 * By callback function
+
 ```
 from funnytools.parallel import Parallel
 
@@ -47,5 +51,6 @@ Release logs
 ------------
 
 #### V1.0.0 at 2022/08/28
+
 * With go on last task and max fail try times.
 * With progress bar.
