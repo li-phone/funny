@@ -27,6 +27,14 @@ link -s deploy-x.x.x-Linux deploy
 Usage
 -----
 
+* **Allow accessing to the remote hosts by your identity file (SSH private key)**.
+* **Only yourself own the SSH private key**.
+    * On Linux:
+        ```
+        > chmod 700 ~/.ssh/id_rsa
+        ```
+    * On Windows:
+      > Delete the SYSTEM and the Administrators roles and only keep yourself.
 * Use ```deploy -h``` to call for the help.
 
 ```
@@ -56,6 +64,7 @@ optional arguments:
   "ENV": {
     "KF": "host1,host2,host3" //delete me: 环境名称的全部连接地址，逗号分隔
   },
+  "IDENTITY_FILE": "", //delete me: 你的私钥文件，默认为~/.ssh/id_rsa
   "DEFAULT_ENV": "KF", //delete me: 默认环境名称
   "APP_CONFIG": {
     "jar": [ //delete me: jar应用需要替换的文件和文件夹路径
