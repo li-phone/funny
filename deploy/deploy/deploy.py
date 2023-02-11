@@ -3,27 +3,8 @@ import os.path
 import os.path as osp
 import subprocess
 
-ENV, DEFAULT_ENV, APP_CONFIG, APP, IDENTITY_FILE = None, None, None, None, None
-
-
-class AppConfig(object):
-    JAR = 'jar'
-    WAR = 'war'
-    ENV_STR = 'source /etc/profile; source ~/.profile; source ~/.bashrc;'
-
-    @staticmethod
-    def get_type(path):
-        def is_type(t):
-            for s in t:
-                p = glob.glob(osp.join(path, s))
-                if len(p) == 0:
-                    return False
-            return True
-
-        for k, v in APP_CONFIG.items():
-            if is_type(v):
-                return k, v
-        return None
+ENV, DEFAULT_ENV, APP, IDENTITY_FILE = None, None, None, None
+ENV_STR = 'source /etc/profile; source ~/.profile; source ~/.bashrc;'
 
 
 def dec_cmd(cmd):
@@ -32,18 +13,14 @@ def dec_cmd(cmd):
     return f'{cmd} -i "{IDENTITY_FILE}" '
 
 
-def check_params(module, app):
-    if module and str(module).strip() and module not in app['name']:
-        return None
-    target_path = app['target'] if 'target' in app and app['target'] else f"**/{app['name']}/target"
-    targets = glob.glob(target_path, recursive=True)
-    if not targets:
-        return None
-    target = targets[0]
-    app_type, app_def = AppConfig.get_type(target)
-    if not app_type:
-        return None
-    return dict(target=target, app_type=app_type, app_def=app_def)
+def glob_path(root, path):
+    targets = glob.glob(path, recursive=True)
+    if targets:
+        return targets[0]
+    targets = glob.glob(osp.join(root, path), recursive=True)
+    if targets:
+        return targets[0]
+    return None
 
 
 def prepare_environment(user, host):
@@ -56,7 +33,7 @@ def prepare_environment(user, host):
 
     kill2 = 'kill2'
     kill2_cmd = r'''
-# 0x0001  根据名称杀死进程
+# kill process by process name
 kill2() {
     echo \"[INFO] kill before:\"&&ps -ef|grep \$1&&echo&&ps -ef|grep \$1|awk '{print \$2}'|xargs kill -9 2> /dev/null||echo \"[INFO] kill after:\"||ps -ef|grep \$1;
 }
@@ -65,39 +42,40 @@ kill2() {
     ret = run(f'{prefix} "command -v {kill2}"')
     if ret != kill2:
         ret = run(f'{prefix} "echo \\"{kill2_cmd}\\" >> ~/.bashrc"')
-        ret = run(f'{prefix} "{AppConfig.ENV_STR}"')
+        ret = run(f'{prefix} "{ENV_STR}"')
 
 
-def build_deploy(user, host, app, app_params):
+def build_deploy(user, host, app):
     """
-        1. 杀死服务
-        2. 删除文件
-        3. 上传文件
-        4. 重启服务
+    Core Steps:
+        1. kill remote running process (Only Debug, Not Production)
+        2. replace remote files or folders (Not Distinguish Application Category)
+        3. restart remote process
     """
-    target, app_type, app_def = app_params['target'], app_params['app_type'], app_params['app_def']
-    pid = osp.basename(app['root']) + '.jar' if app_type == AppConfig.JAR else osp.basename(app['root'])
+
+    pid = osp.basename(app['name'])
     command = [dec_cmd('ssh') + f'{user}@{host} "kill2 {pid}"']
-    for path in app_def:
-        p = glob.glob(osp.join(target, path))
-        if not p:
+
+    for replace in app['replace']:
+        if 'source' not in replace or 'destination' not in replace:
             continue
-        full_path = p[0].replace(osp.join(target, ''), '')
-        src = osp.join(target, full_path).replace('\\', '/')
-        if app_type == AppConfig.WAR:
-            full_path = path.replace('*/', '')
-        dst = osp.join(app['dst'], full_path).replace('\\', '/')
+        src = glob_path(app['local_root'], replace['source'])
+        if not src:
+            continue
+        dst = osp.join(app['remote_root'], replace['destination']).replace('\\', '/')
         command.append(dec_cmd('ssh') + f'{user}@{host} "rm -r {dst}"')
         if osp.isdir(src):
             command.append(dec_cmd('ssh') + f'{user}@{host} "mkdir -p {dst}"')
             dst = osp.dirname(dst)
         command.append(dec_cmd('scp') + f'-r {src} {user}@{host}:{dst}')
-    cmd = f"{AppConfig.ENV_STR} {app['start']}"
+
+    cmd = f"{ENV_STR} {app['start']}"
     command.append(dec_cmd('ssh') + f'{user}@{host} "{cmd}"')
+
     return command
 
 
-def run_deploy(command, app, app_params):
+def run_deploy(command, app):
     for cmd in command:
         # os.system(cmd)
         # p = os.popen(cmd)
@@ -105,7 +83,7 @@ def run_deploy(command, app, app_params):
         # if app['start'] in cmd:
         #     time.sleep(1)
         print(cmd)
-        if not (app['start'] in cmd and app_params['app_type'] in (AppConfig.WAR,)):
+        if not (app['start'] in cmd):
             ret = p.stdout.read().decode('utf-8')
         #     print(ret)
 
@@ -114,18 +92,17 @@ def deploy(env=None, module=None, run=None):
     commands = []
     env = ENV[env] if env in ENV else env
     for app in APP:
-        app_params = check_params(module, app)
-        if not app_params:
+        if module and str(module).strip() and module not in app['name']:
             continue
         user, hosts = app['user'], app['host'].strip().split(',')
         for host in hosts:
             if host not in env:
                 continue
             prepare_environment(user, host)
-            command = build_deploy(user, host, app, app_params)
+            command = build_deploy(user, host, app)
             commands.extend(command)
             if run:
-                run_deploy(command, app, app_params)
+                run_deploy(command, app)
     with open(f'{osp.basename(__file__)[:-3]}-auto.sh', 'w') as fp:
         fp.writelines('\n'.join(commands))
 
@@ -142,25 +119,30 @@ def generate_demo():
     "KF": "host1,host2,host3" //delete me: 环境名称的全部连接地址，逗号分隔
   },
   "DEFAULT_ENV": "KF", //delete me: 默认环境名称
-  "APP_CONFIG": {
-    "jar": [ //delete me: jar应用需要替换的文件和文件夹路径
-      "lib",
-      "*.jar"
-    ],
-    "war": [ //delete me: war应用需要替换的文件和文件夹路径
-      "WEB-INF/lib",
-      "WEB-INF/classes/com"
-    ]
-  },
+  "IDENTITY_FILE": "", //delete me: 私钥文件，默认为~/.ssh/id_rsa
   "APP": [
     {
       "user": "user", //delete me: 用户名
       "host": "host1,host2", //delete me: 连接地址，逗号分隔
       "name": "app name", //delete me: 应用名称
+      "local_root": "~/app/app_root", //delete me: 本地根目录
+      "remote_root": "~/app/app_root", //delete me: 远端根目录
       "root": "~/app/app_root", //delete me: 远程应用的根目录
       "start": "cd ~/app/app_root/ && nohup sh start.sh &", //delete me: 应用启动命令，如需每次都查看一遍，请去掉nohup和&
-      "dst": "~/app/app_root", //delete me: 远程应用的运行目录
-      "target": "app/app_root/target" //delete me: 本地编译的目标目录
+      "replace": [
+        {
+          "source": "config/abc.txt", // delete me: 源文件路径
+          "destination": "config" // delete me: 目的路径
+        },
+        {
+          "source": "lib", // delete me: 源文件路径
+          "destination": "lib" // delete me: 目的路径
+        },
+        {
+          "source": "abc.jar", // delete me: 源文件路径
+          "destination": "abc.jar" // delete me: 目的路径
+        }
+      ]
     }
   ]
 }
@@ -183,15 +165,16 @@ def main():
 
     if args.demo:
         generate_demo()
-        print('[*] ' + '.' * 16 + ' generate demo OK!')
+        print('[*] ' + '-' * 16 + ' generate demo OK!')
         return
+
     cfg = read_cfg(args.cfg)
-    global ENV, DEFAULT_ENV, APP_CONFIG, APP, IDENTITY_FILE
-    ENV, DEFAULT_ENV, APP_CONFIG, APP = cfg['ENV'], cfg['DEFAULT_ENV'], cfg['APP_CONFIG'], cfg['APP']
+    global ENV, DEFAULT_ENV, APP, IDENTITY_FILE
+    ENV, DEFAULT_ENV, APP = cfg['ENV'], cfg['DEFAULT_ENV'], cfg['APP']
     IDENTITY_FILE = IDENTITY_FILE if 'IDENTITY_FILE' not in cfg else cfg['IDENTITY_FILE']
     args.env = args.env if args.env else DEFAULT_ENV
     deploy(args.env, args.module, args.run)
-    print('[*] ' + '.' * 16 + ' process OK!')
+    print('[*] ' + '-' * 16 + ' process OK!')
 
 
 if __name__ == '__main__':
