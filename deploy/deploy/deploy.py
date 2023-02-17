@@ -15,11 +15,10 @@ def dec_cmd(cmd):
 
 def glob_path(root, path):
     targets = glob.glob(path, recursive=True)
+    if not targets:
+        targets = glob.glob(osp.join(root, path), recursive=True)
     if targets:
-        return targets[0]
-    targets = glob.glob(osp.join(root, path), recursive=True)
-    if targets:
-        return targets[0]
+        return targets
     return None
 
 
@@ -59,15 +58,25 @@ def build_deploy(user, host, app):
     for replace in app['replace']:
         if 'source' not in replace or 'destination' not in replace:
             continue
-        src = glob_path(app['local_root'], replace['source'])
-        if not src:
+        src_paths = glob_path(app['local_root'], replace['source'])
+        if not src_paths:
             continue
-        dst = osp.join(app['remote_root'], replace['destination']).replace('\\', '/')
-        command.append(dec_cmd('ssh') + f'{user}@{host} "rm -r {dst}"')
-        if osp.isdir(src):
-            command.append(dec_cmd('ssh') + f'{user}@{host} "mkdir -p {dst}"')
-            dst = osp.dirname(dst)
-        command.append(dec_cmd('scp') + f'-r {src} {user}@{host}:{dst}')
+        for src in src_paths:
+            src = src.replace('\\', '/')
+            head_path = os.path.join(app['local_root'], replace['destination'])
+            tail_path = src[len(head_path):]
+            if tail_path:
+                dst = osp.join(app['remote_root'], replace['destination'], tail_path).replace('\\', '/')
+            else:
+                dst = osp.join(app['remote_root'], replace['destination']).replace('\\', '/')
+            command.append(dec_cmd('ssh') + f'{user}@{host} "rm -r {dst}"')
+            if osp.isdir(src):
+                command.append(dec_cmd('ssh') + f'{user}@{host} "mkdir -p {dst}"')
+                dst = osp.dirname(dst)
+            else:
+                dst = osp.dirname(dst)
+                command.append(dec_cmd('ssh') + f'{user}@{host} "mkdir -p {dst}"')
+            command.append(dec_cmd('scp') + f'-r {src} {user}@{host}:{dst}')
 
     cmd = f"{ENV_STR} {app['start']}"
     command.append(dec_cmd('ssh') + f'{user}@{host} "{cmd}"')
@@ -125,22 +134,21 @@ def generate_demo():
       "user": "user", //delete me: 用户名
       "host": "host1,host2", //delete me: 连接地址，逗号分隔
       "name": "app name", //delete me: 应用名称
-      "local_root": "~/app/app_root", //delete me: 本地根目录
-      "remote_root": "~/app/app_root", //delete me: 远端根目录
-      "root": "~/app/app_root", //delete me: 远程应用的根目录
-      "start": "cd ~/app/app_root/ && nohup sh start.sh &", //delete me: 应用启动命令，如需每次都查看一遍，请去掉nohup和&
+      "local_root": "~/app/local_root", //delete me: 本地根目录
+      "remote_root": "~/app/remote_root", //delete me: 远端根目录
+      "start": "cd ~/app/remote_root/ && nohup sh start.sh &", //delete me: 应用启动命令，如需每次都查看一遍，请去掉nohup和&
       "replace": [
         {
-          "source": "config/abc.txt", // delete me: 源文件路径
-          "destination": "config" // delete me: 目的路径
+          "source": "config/app.cfg", // delete me: 源文件路径
+          "destination": "config/" // delete me: 目的路径，为目录时需与源文件路径保持一致的"/"符号，此处有"/"
         },
         {
           "source": "lib", // delete me: 源文件路径
-          "destination": "lib" // delete me: 目的路径
+          "destination": "lib" // delete me: 目的路径，为目录时需与源文件路径保持一致的"/"符号，此处无"/"
         },
         {
-          "source": "abc.jar", // delete me: 源文件路径
-          "destination": "abc.jar" // delete me: 目的路径
+          "source": "app.jar", // delete me: 源文件路径
+          "destination": "app.jar" // delete me: 目的路径
         }
       ]
     }
@@ -158,7 +166,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", "-e", help="environment name, e.g. 'KF'")
     parser.add_argument("--module", "-m", help="module name, e.g. 'app'")
-    parser.add_argument("--cfg", "-c", default="deploy-config.json", help="config file")
+    parser.add_argument("--cfg", "-c", default="deploy-config-2.json", help="config file")
     parser.add_argument("--run", "-r", action="store_true", help="whether run or not")
     parser.add_argument("--demo", "-d", action="store_true", help="generate demo config file")
     args = parser.parse_args()
