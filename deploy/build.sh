@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 NAME="deploy"
-VERSION="1.0.0"
+VERSION="2.0.0"
 HASH_CMD="md5 sha1 sha256"
 PREFIX=$NAME-$VERSION-win_x64
 SUFFIX=".exe"

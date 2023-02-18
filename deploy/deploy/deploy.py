@@ -3,6 +3,8 @@ import os.path
 import os.path as osp
 import subprocess
 
+__VERSION__ = '2.0.0'
+
 ENV, DEFAULT_ENV, APP, IDENTITY_FILE = None, None, None, None
 ENV_STR = 'source /etc/profile; source ~/.profile; source ~/.bashrc;'
 
@@ -169,7 +171,12 @@ def main():
     parser.add_argument("--cfg", "-c", default="deploy-config-2.json", help="config file")
     parser.add_argument("--run", "-r", action="store_true", help="whether run or not")
     parser.add_argument("--demo", "-d", action="store_true", help="generate demo config file")
+    parser.add_argument("--version", "-v", action="store_true", help="show deploy version")
     args = parser.parse_args()
+
+    if args.version:
+        print(f'deploy version: {__VERSION__}')
+        return
 
     if args.demo:
         generate_demo()

@@ -39,7 +39,7 @@ Usage
 
 ```
 usage: deploy [-h] [--env ENV] [--module MODULE] [--cfg CFG]
-                                [--run] [--demo]
+                                [--run] [--demo] [--version]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -49,6 +49,7 @@ optional arguments:
   --cfg CFG, -c CFG     config file
   --run, -r             whether run or not
   --demo, -d            generate demo config file
+  --version, -v         show deploy version
 ```
 
 * Generate the demo config file.
@@ -64,27 +65,30 @@ optional arguments:
   "ENV": {
     "KF": "host1,host2,host3" //delete me: 环境名称的全部连接地址，逗号分隔
   },
-  "IDENTITY_FILE": "", //delete me: 你的私钥文件，默认为~/.ssh/id_rsa
   "DEFAULT_ENV": "KF", //delete me: 默认环境名称
-  "APP_CONFIG": {
-    "jar": [ //delete me: jar应用需要替换的文件和文件夹路径
-      "lib",
-      "*.jar"
-    ],
-    "war": [ //delete me: war应用需要替换的文件和文件夹路径
-      "WEB-INF/lib",
-      "WEB-INF/classes/com"
-    ]
-  },
+  "IDENTITY_FILE": "", //delete me: 私钥文件，默认为~/.ssh/id_rsa
   "APP": [
     {
       "user": "user", //delete me: 用户名
       "host": "host1,host2", //delete me: 连接地址，逗号分隔
       "name": "app name", //delete me: 应用名称
-      "root": "~/app/app_root", //delete me: 远程应用的根目录
-      "start": "cd ~/app/app_root/ && nohup sh start.sh &", //delete me: 应用启动命令，如需每次都查看一遍，请去掉nohup和&
-      "dst": "~/app/app_root", //delete me: 远程应用的运行目录
-      "target": "app/app_root/target" //delete me: 本地编译的目标目录
+      "local_root": "~/app/local_root", //delete me: 本地根目录
+      "remote_root": "~/app/remote_root", //delete me: 远端根目录
+      "start": "cd ~/app/remote_root/ && nohup sh start.sh &", //delete me: 应用启动命令，如需每次都查看一遍，请去掉nohup和&
+      "replace": [
+        {
+          "source": "config/app.cfg", // delete me: 源文件路径
+          "destination": "config/" // delete me: 目的路径，为目录时需与源文件路径保持一致的"/"符号，此处有"/"
+        },
+        {
+          "source": "lib", // delete me: 源文件路径
+          "destination": "lib" // delete me: 目的路径，为目录时需与源文件路径保持一致的"/"符号，此处无"/"
+        },
+        {
+          "source": "app.jar", // delete me: 源文件路径
+          "destination": "app.jar" // delete me: 目的路径
+        }
+      ]
     }
   ]
 }
@@ -114,3 +118,7 @@ Release logs
 * With the additional deployment script.
 * With the help for running and configuration.
 * Support prefix abbreviations for the module parameter.
+
+#### V2.0.0 at 2023/02/18
+
+* Not distinguish application type.
