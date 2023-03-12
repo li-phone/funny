@@ -1,0 +1,7 @@
+{
+  "Name.*.*.*.*": "Faker::fake.name()",
+  "CountryCode.*.*.*.*": "Faker::fake.country_code()",
+  "District.*.*.*.*": "Faker::fake.district()",
+  "*.*.*.*.int": "6+",
+  "citycol.*.*.*.*": "Faker::fake.word()"
+}

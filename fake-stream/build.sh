@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-MAIN="MainGUI"
+MAIN="MainApp"
 NAME="FakeStream"
-VERSION="2.0.0"
-HASH_CMD="md5 sha1 sha256"
+VERSION="2.1.0"
+HASH_CMD="md5 sha1 sha256 sha512"
 PREFIX=$NAME-$VERSION-win_x64
 SUFFIX=".exe"
 ICO_PATH="ico/$NAME-$VERSION-48x48.ico"

@@ -21,11 +21,16 @@ Release logs
 
 #### V2.0.0 at 2022/08/28
 
-* With GUI page and multithreading.
-* With saving last running status.
+* Support GUI page and multithreading.
+* Support for saving last running status.
 
-#### Next
+#### V2.1.0 at 2023/03/12
 
-* Support choosing the one from last some running status.
-* Support random values.
-* Perfect compatibility with all data types and the higher MySQL version.
+* Support for selecting database.
+* Support user-defined data generation through regular expression and python Faker package.
+
+#### Done
+
+- [x] Support choosing the one from last some running status. :heavy_check_mark:
+- [x] Support random values. :heavy_check_mark:
+- [x] Perfect compatibility with all data types and the higher MySQL version. :heavy_check_mark:

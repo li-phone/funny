@@ -3,49 +3,113 @@ v 2.0.0: 1. 更新为图形化界面
          2. 添加多线程功能点
          3. 添加验证器
          4. 添加用户数据保存和恢复
+
+v 2.1.0: 1. 添加数据库选择
+         2. 添加数据自定义生成
 """
 import hashlib
 import os.path
 
 import wx
 
-from FakeStream import connect, FakeStreamWorker, read_bin, write_bin
-from NumberValidator import NumberValidator, DataType
-from db_utils import strftime
+from FakeStreamWorker import connect, FakeStreamWorker, dump_log
+from dlg.select_dialog import SelectDialog
+from util.log_util import LOGGER, strftime, read_bin, write_bin
+from validator.NumberValidator import NumberValidator, DataType
 
 
-class HomePage(wx.Frame):
+def build_key(d):
+    if 'loginUsrTC' not in d or 'dbAddrTC' not in d or 'dbPortTC' not in d or 'dbNameTC' not in d:
+        return None
+    user, host, port, dbname = d['loginUsrTC'], d['dbAddrTC'], d['dbPortTC'], d['dbNameTC']
+    if user and host and port:
+        return f"{user}@{host}:{port}/{dbname}"
+    return None
+
+
+class MainApp(wx.Frame):
 
     def __init__(self, parent, title, size, *args, **kwargs):
-        super(HomePage, self).__init__(parent, title=title, size=size, *args, **kwargs)
+        super(MainApp, self).__init__(parent, title=title, size=size, *args, **kwargs)
         self.SetMaxSize(size)
         self.InitUI()
         self.Centre()
         self.Show()
 
         self.connection = None
-        self.parallel = FakeStreamWorker(is_join=False, print_process=False, logTC=self.logTC)
         self.ctrlNames = (
             'dbAddrTC', 'dbPortTC', 'dbNameTC', 'loginUsrTC', 'loginPwdTC',
             'fixValTC', 'offsetTC', 'speedsTC', 'workerTC', 'tbNameTC',
         )
-        self.parameter_path = os.path.join(os.path.expanduser('~'), '.fakestream/.cltr.par')
-        self.parameters = read_bin(self.parameter_path)
-        self.parameters = {} if self.parameters is None else self.parameters
+        self.db_parameter_path = os.path.join(os.path.expanduser('~'), '.fakestream/.cltr.bin')
+
+        self.regex_params = read_bin('regex-parameters.json')
+        self.parallel = FakeStreamWorker(is_join=False, print_process=False, log_func=self.print_log,
+                                         regex_params=self.regex_params)
+        self.db_params = read_bin(self.db_parameter_path)
+        self.db_params = {} if self.db_params is None else self.db_params
+        self.sorted_params = []
         self.ReadParameters()
+        self.ShowSelectDialog()
+
+    def print_log(self, line):
+        logs = self.logTC.GetValue() + f'{line}'
+        if logs.count('\n') > 3000:
+            logs = logs[len(logs) // 2:]
+        self.logTC.SetValue(str(logs))
+        self.logTC.ShowPosition(self.logTC.GetLastPosition())
+        dump_log(line)
+
+    def func_callback(self, index, item):
+        if not self.sorted_params:
+            return
+
+        if index is None or not item:
+            return
+
+        self.print_log(LOGGER.info(f'selected [{index}] {item}'))
+
+        key = self.sorted_params[int(index)][0]
+        parameter = self.db_params.get(key)['data']
+        for k, v in parameter.items():
+            TC = self.__getattribute__(k)
+            if TC is not None:
+                TC.SetValue(v)
+
+    def ShowSelectDialog(self):
+        try:
+            if len(self.db_params) == 0 or not isinstance(self.db_params, dict):
+                return
+
+            if not self.sorted_params:
+                self.sorted_params = sorted(self.db_params.items(), key=lambda d: d[1]['time'], reverse=True)
+
+            choices = []
+            for k, v in self.sorted_params:
+                choice = build_key(v['data'])
+                if choice:
+                    choices.append(choice)
+
+            dlg = SelectDialog(None, choices=choices, func_callback=self.func_callback, title='选择数据源')
+            dlg.Show()
+
+        except Exception as e:
+            return None
 
     def ReadParameters(self):
         try:
-            if len(self.parameters) == 0 or not isinstance(self.parameters, dict):
+            if len(self.db_params) == 0 or not isinstance(self.db_params, dict):
                 return
-            sorted_params = sorted(self.parameters.items(), key=lambda d: d[1]['time'], reverse=True)
-            key = sorted_params[0][0]
-            parameter = self.parameters.get(key)['data']
+            self.sorted_params = sorted(self.db_params.items(), key=lambda d: d[1]['time'], reverse=True)
+            key = self.sorted_params[0][0]
+            parameter = self.db_params.get(key)['data']
             for k, v in parameter.items():
                 TC = self.__getattribute__(k)
                 if TC is not None:
                     TC.SetValue(v)
+            self.print_log(LOGGER.info(f'read parameters successfully'))
         except Exception as e:
+            self.print_log(LOGGER.error(f'read parameters error'))
             return None
 
     def SaveParameters(self):
@@ -56,11 +120,13 @@ class HomePage(wx.Frame):
                 if TC.Validate() is False:
                     return False
                 parameter[name] = TC.GetValue()
-            md5_key = hashlib.md5(str(parameter).encode('utf-8')).hexdigest()
-            self.parameters[md5_key] = dict(time=strftime(), data=parameter)
-            write_bin(self.parameter_path, self.parameters)
+            md5_key = hashlib.md5(str(build_key(parameter)).encode('utf-8')).hexdigest()
+            self.db_params[md5_key] = dict(time=strftime(), data=parameter)
+            write_bin(self.db_parameter_path, self.db_params)
+            self.print_log(LOGGER.info(f'save parameters successfully'))
             return True
         except Exception as e:
+            self.print_log(LOGGER.error(f'save parameters error'))
             return True
 
     def InitUI(self):
@@ -185,8 +251,15 @@ class HomePage(wx.Frame):
         if self.connection is None:
             self.connection = connect(connect_str, passwd)
         if self.connection is None:
+            self.print_log(LOGGER.error(f'connecting {connect_str} error'))
             wx.MessageBox("连接失败！")
         else:
+            self.print_log(LOGGER.info(f'connecting {connect_str} successfully'))
+            run_params = dict(
+                host=addr,
+                dbname=dbname,
+            )
+            self.parallel.update_params(run_params)
             wx.MessageBox("连接成功！")
 
     def OnClickRun(self, event):
@@ -211,6 +284,7 @@ class HomePage(wx.Frame):
     def OnClickStop(self, event):
         if self.parallel.run_flag is True:
             self.parallel.run_flag = False
+            self.print_log(LOGGER.info(f'stop success'))
             wx.MessageBox("停止成功！")
         else:
             wx.MessageBox("没有正在运行的程序！")
@@ -218,7 +292,7 @@ class HomePage(wx.Frame):
 
 def main():
     app = wx.App()
-    HomePage(None, '数据流工具', size=(810, 600))
+    MainApp(None, '数据流工具', size=(810, 600))
     app.MainLoop()
 
 
