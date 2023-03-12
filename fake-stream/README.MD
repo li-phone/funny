@@ -1,6 +1,6 @@
 Fake Stream
 ===========
-> A fake data stream for automatically inserting given strings to database.
+> A fake data stream for automatically inserting user-defined-generation data to database.
 
 Install
 -------
