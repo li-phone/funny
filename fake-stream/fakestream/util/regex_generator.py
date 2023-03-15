@@ -1,10 +1,14 @@
 import itertools as it
+import time
 
 from faker import Faker
 from xeger import Xeger
 
+LAUNCH_TIME = time.time()
+
 fake = Faker("zh_CN")
 
+ANY_HEAD = '::'
 FAKER_HEAD = 'Faker::'
 XEGER_HEAD = 'Xeger::'
 
@@ -42,6 +46,8 @@ def regex_generate(regex_params, keys, limit, default_regex=None):
             regex_value = regex_params[key]
             if regex_value[:len(FAKER_HEAD)] == FAKER_HEAD:
                 value = str(eval(regex_value[len(FAKER_HEAD):]))
+            elif regex_value[:len(ANY_HEAD)] == ANY_HEAD:
+                value = str(eval(regex_value[len(ANY_HEAD):]))
             else:
                 value = xeger_generate(regex_value, limit)
             return value

@@ -86,6 +86,13 @@ def update_table(table, regex_params, **kwargs):
     return table
 
 
+def is_time_type(string):
+    string = str(string).lower()
+    if 'time' in string or 'date' in string or 'year' in string:
+        return True
+    return False
+
+
 def fill_table(table, regex_params, host, dbname, tbl_name, default_regex=None, **kwargs):
     d = {}
     for i, v in enumerate(table):
@@ -100,10 +107,11 @@ def fill_table(table, regex_params, host, dbname, tbl_name, default_regex=None, 
             value = ''
         type_length = str2num(v['Type'])
         keys = [v['Field'], tbl_name, dbname, str(host).replace('.', '-'), reg_word(v['Type'])]
+        keys = [str(s).lower() for s in keys]
         regex_value = regex_generate(regex_params, keys, type_length, default_regex=default_regex)
         if regex_value:
             value = regex_value
-        if type_length:
+        if type_length and not is_time_type(v['Type']):
             value = str(value)[:type_length]
         d[name] = value
     return d
