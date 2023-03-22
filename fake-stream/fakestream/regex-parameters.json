@@ -1,8 +1,8 @@
 {
-  "Name.*.*.*.*": "Faker::fake.name()",
-  "CountryCode.*.*.*.*": "Faker::fake.country_code()",
-  "District.*.*.*.*": "Faker::fake.district()",
+  "name.*.*.*.*": "::fake.name()",
+  "countryCode.*.*.*.*": "::fake.country_code()",
+  "district.*.*.*.*": "::fake.district()",
   "*.*.*.*.int": "6+",
-  "citycol.*.*.*.*": "Faker::fake.word()",
+  "citycol.*.*.*.*": "::fake.word()",
   "*.*.*.*.datetime": "::time.strftime('%Y-%m-%d %H:%M:%S.%m')"
 }

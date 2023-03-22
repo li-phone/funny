@@ -12,18 +12,18 @@ def dump_log(line, log_path=f'logs/{fileftime()}.log'):
 
 
 class FakeStreamWorker(AbstractParallel, ABC):
-    def __init__(self, log_func, regex_params, **kwargs):
+    def __init__(self, log_func, regex_params, batch_size, **kwargs):
         super().__init__(**kwargs)
         self.print_log = log_func
         self.regex_params = regex_params
+        self.batch_size = batch_size
         self.host = None
         self.dbname = None
-        self.workers_num = 1
-        self.connection = None
         self.fix_val = None
-        self.time_offset = None
         self.speed = None
+        self.workers_num = 1
         self.table_names = None
+        self.connection = None
         self.run_flag = None
         self.table_map = None
 
@@ -57,16 +57,19 @@ class FakeStreamWorker(AbstractParallel, ABC):
                             self.table_map[table_name] = update_table(
                                 exec_sql(f"desc {table_name}", self.connection, reshape=False), self.regex_params)
                 for k, v in self.table_map.items():
-                    fs = fill_table(v, self.regex_params, self.host, self.dbname, k, default_regex=self.fix_val)
-                    ret, res = add([fs], k, self.connection, freq=1)
+                    records = []
+                    for b in range(self.batch_size):
+                        record = fill_table(v, self.regex_params, self.host, self.dbname, k, default_regex=self.fix_val)
+                        records.append(record)
+                    ret, res = add(records, k, self.connection, freq=len(records))
                     if ret:
-                        success_cnt += 1
+                        success_cnt += len(records)
                     else:
-                        failure_cnt += 1
+                        failure_cnt += len(records)
                     for line in res:
                         self.print_log(LOGGER.info(f'execute sql "{line}"'))
             except Exception as e:
-                failure_cnt += 1
+                failure_cnt += self.batch_size
                 self.print_log(LOGGER.error(e.args))
                 self.print_log(LOGGER.error(f'execute failure!'))
 

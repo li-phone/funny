@@ -45,7 +45,7 @@ class MainApp(wx.Frame):
 
         self.regex_params = read_bin('regex-parameters.json')
         self.parallel = FakeStreamWorker(is_join=False, print_process=False, log_func=self.print_log,
-                                         regex_params=self.regex_params)
+                                         regex_params=self.regex_params, batch_size=1)
         self.db_params = read_bin(self.db_parameter_path)
         self.db_params = {} if self.db_params is None else self.db_params
         self.sorted_params = []
@@ -183,9 +183,9 @@ class MainApp(wx.Frame):
         paramGrid = wx.GridBagSizer(0, 0)
         self.fixValST = wx.StaticText(panel, -1, "设定值")
         self.fixValTC = wx.TextCtrl(panel, -1, style=wx.ALIGN_LEFT, value='6')
-        self.offsetST = wx.StaticText(panel, -1, "时间补偿(秒)")
-        self.offsetTC = wx.TextCtrl(panel, -1, style=wx.ALIGN_LEFT, value='0',
-                                    validator=NumberValidator(DataType.FLOAT))
+        self.offsetST = wx.StaticText(panel, -1, "批大小")
+        self.offsetTC = wx.TextCtrl(panel, -1, style=wx.ALIGN_LEFT, value='1',
+                                    validator=NumberValidator(DataType.UINT))
         self.workerST = wx.StaticText(panel, -1, "线程数")
         self.workerTC = wx.TextCtrl(panel, -1, style=wx.ALIGN_LEFT, value='1',
                                     validator=NumberValidator(DataType.UINT))
@@ -265,8 +265,8 @@ class MainApp(wx.Frame):
     def OnClickRun(self, event):
         self.OnClickConnect(event)
         run_params = dict(
+            batch_size=int(self.offsetTC.GetValue()),
             fix_val=self.fixValTC.GetValue(),
-            time_offset=float(self.offsetTC.GetValue()),
             speed=float(self.speedsTC.GetValue()),
             workers_num=int(self.workerTC.GetValue()),
             table_names=self.tbNameTC.GetValue().split(),
